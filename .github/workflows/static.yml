@@ -1,17 +1,25 @@
-name: Deploy Vite site to Pages
+name: Deploy Vite site to GitHub Pages
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [ main ]          # re-deploy on every push to main
+  workflow_dispatch:            # allow manual runs
 
+# minimum permissions the Pages actions need
 permissions:
   contents: read
   pages: write
-  id-token: write   # required by deploy-pages
+  id-token: write               # OIDC for the deploy-pages action
+
+concurrency:                    # only one Pages deploy at a time
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  build-deploy:
+# ────────────────────────────────────────────────────────────────
+# 1️⃣  Build the site and upload the ./dist artifact
+# ────────────────────────────────────────────────────────────────
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,10 +30,26 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build              # creates ./dist
+      - run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload build output
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist                  # 👈 publish only the built files
+          path: ./dist           # <-- only the static files
 
-      - uses: actions/deploy-pages@v4   # goes live
+# ────────────────────────────────────────────────────────────────
+# 2️⃣  Deploy the artifact to Pages
+# ────────────────────────────────────────────────────────────────
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    # this is the bit the API was missing
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
