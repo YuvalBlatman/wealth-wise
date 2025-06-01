@@ -4,7 +4,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/wealth-wise/',
+  base: '/dashboard',
   plugins: [react()],
   server: {
     allowedHosts: true
